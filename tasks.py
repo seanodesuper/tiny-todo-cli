@@ -1,5 +1,5 @@
 import json
-import sys
+import argparse
 from pathlib import Path
 
 DATA_FILE = Path(__file__).parent / "items.json"
@@ -12,13 +12,13 @@ def load_items():
 def save_items(items):
     DATA_FILE.write_text(json.dumps(items, indent=2))
 
-def add_task(text):
+def cmd_add(args):
     items = load_items()
-    items.append({"text": text, "done": False})
+    items.append({"text": args.text, "done": False})
     save_items(items)
-    print(f"Added: {text}")
+    print(f"Added: {args.text}")
 
-def list_tasks():
+def cmd_list(args):
     items = load_items()
     if not items:
         print("No tasks yet!")
@@ -27,34 +27,48 @@ def list_tasks():
         status = "x" if task["done"] else " "
         print(f"[{status}] {i}. {task['text']}")
 
-def mark_done(idx):
+def cmd_done(args):
     items = load_items()
-    if 1 <= idx <= len(items):
-        items[idx - 1]["done"] = True
+    if 1 <= args.number <= len(items):
+        items[args.number - 1]["done"] = True
         save_items(items)
-        print(f"Done: {items[idx - 1]['text']}")
+        print(f"Done: {items[args.number - 1]['text']}")
     else:
-        print(f"Invalid task number: {idx}")
+        print(f"Invalid task number: {args.number}")
 
-def delete_task(idx):
+def cmd_delete(args):
     items = load_items()
-    if 1 <= idx <= len(items):
-        removed = items.pop(idx - 1)
+    if 1 <= args.number <= len(items):
+        removed = items.pop(args.number - 1)
         save_items(items)
         print(f"Deleted: {removed['text']}")
     else:
-        print(f"Invalid task number: {idx}")
+        print(f"Invalid task number: {args.number}")
+
+def main():
+    parser = argparse.ArgumentParser(description="Todo CLI Manager")
+    subparsers = parser.add_subparsers(dest="command")
+
+    add_p = subparsers.add_parser("add", help="Add a new task")
+    add_p.add_argument("text", help="Task description")
+    add_p.set_defaults(func=cmd_add)
+
+    list_p = subparsers.add_parser("list", help="List all tasks")
+    list_p.set_defaults(func=cmd_list)
+
+    done_p = subparsers.add_parser("done", help="Mark task as done")
+    done_p.add_argument("number", type=int, help="Task number")
+    done_p.set_defaults(func=cmd_done)
+
+    del_p = subparsers.add_parser("delete", help="Delete a task")
+    del_p.add_argument("number", type=int, help="Task number")
+    del_p.set_defaults(func=cmd_delete)
+
+    args = parser.parse_args()
+    if hasattr(args, "func"):
+        args.func(args)
+    else:
+        parser.print_help()
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        list_tasks()
-    elif sys.argv[1] == "add":
-        add_task(" ".join(sys.argv[2:]))
-    elif sys.argv[1] == "list":
-        list_tasks()
-    elif sys.argv[1] == "done":
-        mark_done(int(sys.argv[2]))
-    elif sys.argv[1] == "delete":
-        delete_task(int(sys.argv[2]))
-    else:
-        print(f"Unknown command: {sys.argv[1]}")
+    main()
